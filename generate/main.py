@@ -4,6 +4,24 @@ import numpy as np
 import sympy
 
 
+def main():
+    p = utils.trivec_sym()
+    print(p.normalized())
+    return
+    l1 = utils.point(3, -2, 7) & utils.point(7, 1, -1)
+    l1 = l1.normalized()
+    l2 = utils.point(7, 4, 2) & utils.point(8, -3, -6)
+    l2 = l2.normalized()
+    m = utils.move_to(l1, l2)
+    print(l2)
+    print(utils.apply(m, l1))
+    return
+
+    m = utils.motor_sym()
+    l = utils.line_sym()
+    print(utils.apply(m, l))
+
+
 def exp_ganja():
     b = utils.line_sym(e="self.e_bivector")
     sdbb = utils.scalar_sym("sdbb")
@@ -34,34 +52,6 @@ def log_4cs():
     bi = wmeetwrev * (1 / (2 * sqrt[0]))
     print((a+bi)*l)
     return
-
-
-def main():
-
-    t = utils.translator_sym("ts", "tv")
-    r = utils.rotor_sym("rs", "re")
-    m1 = utils.motor_sym("ms", "mps", "me", "mv")
-    m2 = utils.motor_sym("s2", "ps2", "e2", "v2")
-    p1 = utils.trivec_sym("p")
-    p2 = utils.trivec_sym("p2")
-
-    p0 = utils.point(0, 0, 0)
-    e1 = utils.point(1, 0, 0)
-    e2 = utils.point(0, 1, 0)
-    p1 = np.array([2, 4, -3])
-    p2 = np.array([9, 1, 0])
-
-    n = np.linalg.norm(p2)
-    p1 = utils.point(*(p1 / n))
-
-    # p1 = utils.point(2, 4, -3)
-
-    fromm = p0 & e1
-    to = p0 & p1
-
-    r = utils.sqrt(to * utils.inverse(fromm))
-
-    print(r)
 
 
 if __name__ == "__main__":

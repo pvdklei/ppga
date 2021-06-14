@@ -80,21 +80,27 @@ impl Motor {
         let ps = self.pseudo;
         let e = self.e_bivector;
         let v = self.v_bivector;
-        let everywhere = (-ps + 2. * s + 2.) * 2.0f32.sqrt();
-        let fac = 1. / (4. * (s + 1.).powf(1.5));
-        let everywhere_fac = everywhere * fac;
+        fn sqrt(x: f32) -> f32 {
+            x.sqrt()
+        }
         Self {
-            scalar: everywhere / (4. * (s + 1.).sqrt()),
-            pseudo: ps * everywhere_fac,
-            v_bivector: [
-                v[0] * everywhere_fac,
-                v[1] * everywhere_fac,
-                v[2] * everywhere_fac,
-            ],
+            scalar: sqrt(2. * s + 2.) / 2.,
+            pseudo: sqrt(2.) * ps / (4. * sqrt(s + 1.)),
             e_bivector: [
-                e[0] * everywhere_fac,
-                e[1] * everywhere_fac,
-                e[2] * everywhere_fac,
+                sqrt(2.) * e[0] / (2. * sqrt(s + 1.)),
+                sqrt(2.) * e[1] / (2. * sqrt(s + 1.)),
+                sqrt(2.) * e[2] / (2. * sqrt(s + 1.)),
+            ],
+            v_bivector: [
+                sqrt(2.) * e[0] * ps / (4. * (s * sqrt(s + 1.) + sqrt(s + 1.)))
+                    + sqrt(2.) * s * v[0] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.)))
+                    + sqrt(2.) * v[0] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.))),
+                sqrt(2.) * e[1] * ps / (4. * (s * sqrt(s + 1.) + sqrt(s + 1.)))
+                    + sqrt(2.) * s * v[1] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.)))
+                    + sqrt(2.) * v[1] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.))),
+                sqrt(2.) * e[2] * ps / (4. * (s * sqrt(s + 1.) + sqrt(s + 1.)))
+                    + sqrt(2.) * s * v[2] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.)))
+                    + sqrt(2.) * v[2] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.))),
             ],
         }
     }
@@ -106,8 +112,13 @@ impl Motor {
         let wdotwrev = super::inner::lines(&w, &wrev);
         let wmeetwrev = super::meet::lines(&w, &wrev);
         let sqrt_wdotwrev = wdotwrev.sqrt();
-
         let a = sqrt_wdotwrev.atan();
+
+        // println!("Dot {:?}", wdotwrev);
+        // println!("SqrtDot {:?}", sqrt_wdotwrev);
+        // println!("Meet {:?}", wmeetwrev);
+        // println!("Alpha {:?}", a);
+
         let we = w.e_bivector;
         let wv = w.v_bivector;
         super::Line {
@@ -128,32 +139,6 @@ impl Motor {
                     - 0.5 * we[2] * wmeetwrev.0 / wdotwrev,
             ],
         }
-
-        // let bi = wmeetwrev.div_scalar(2. * sqrt_wdotwrev);
-        // let we = w.e_bivector;
-        // let wv = w.v_bivector;
-        // let l = super::Line {
-        //     e_bivector: [
-        //         we[0] / sqrt_wdotwrev,
-        //         we[1] / sqrt_wdotwrev,
-        //         we[2] / sqrt_wdotwrev,
-        //     ],
-        //     v_bivector: [
-        //         wv[0] / sqrt_wdotwrev + 0.5 * we[0] * wmeetwrev.0 / (sqrt_wdotwrev * wdotwrev),
-        //         wv[1] / sqrt_wdotwrev + 0.5 * we[1] * wmeetwrev.0 / (sqrt_wdotwrev * wdotwrev),
-        //         wv[2] / sqrt_wdotwrev + 0.5 * we[2] * wmeetwrev.0 / (sqrt_wdotwrev * wdotwrev),
-        //     ],
-        // };
-        // let lv = l.v_bivector;
-        // let le = l.e_bivector;
-        // super::Line {
-        //     e_bivector: [a * le[0], a * le[1], a * le[2]],
-        //     v_bivector: [
-        //         a * lv[0] - bi.0 * le[0],
-        //         a * lv[1] - bi.0 * le[1],
-        //         a * lv[2] - bi.0 * le[2],
-        //     ],
-        // }
     }
 
     pub fn mul(&self, other: &Self) -> Self {
@@ -259,12 +244,189 @@ impl Motor {
             ],
         }
     }
+
+    pub fn apply_to_plane(&self, p: &super::Plane) -> super::Plane {
+        let pvec = p.vector;
+        let ms = self.scalar;
+        let mps = self.pseudo;
+        let mv = self.v_bivector;
+        let me = self.e_bivector;
+        super::Plane {
+            vector: [
+                me[0] * me[0] * pvec[0] + 2. * me[0] * mps * pvec[1] + 2. * me[0] * mv[1] * pvec[3]
+                    - 2. * me[0] * mv[2] * pvec[2]
+                    + me[1] * me[1] * pvec[0]
+                    + 2. * me[1] * mps * pvec[2]
+                    - 2. * me[1] * mv[0] * pvec[3]
+                    + 2. * me[1] * mv[2] * pvec[1]
+                    + me[2] * me[2] * pvec[0]
+                    + 2. * me[2] * mps * pvec[3]
+                    + 2. * me[2] * mv[0] * pvec[2]
+                    - 2. * me[2] * mv[1] * pvec[1]
+                    + ms * ms * pvec[0]
+                    + 2. * ms * mv[0] * pvec[1]
+                    + 2. * ms * mv[1] * pvec[2]
+                    + 2. * ms * mv[2] * pvec[3],
+                me[0] * me[0] * pvec[1]
+                    + 2. * me[0] * me[1] * pvec[2]
+                    + 2. * me[0] * me[2] * pvec[3]
+                    - me[1] * me[1] * pvec[1]
+                    - 2. * me[1] * ms * pvec[3]
+                    - me[2] * me[2] * pvec[1]
+                    + 2. * me[2] * ms * pvec[2]
+                    + ms * ms * pvec[1],
+                -me[0] * me[0] * pvec[2]
+                    + 2. * me[0] * me[1] * pvec[1]
+                    + 2. * me[0] * ms * pvec[3]
+                    + me[1] * me[1] * pvec[2]
+                    + 2. * me[1] * me[2] * pvec[3]
+                    - me[2] * me[2] * pvec[2]
+                    - 2. * me[2] * ms * pvec[1]
+                    + ms * ms * pvec[2],
+                -me[0] * me[0] * pvec[3] + 2. * me[0] * me[2] * pvec[1]
+                    - 2. * me[0] * ms * pvec[2]
+                    - me[1] * me[1] * pvec[3]
+                    + 2. * me[1] * me[2] * pvec[2]
+                    + 2. * me[1] * ms * pvec[1]
+                    + me[2] * me[2] * pvec[3]
+                    + ms * ms * pvec[3],
+            ],
+        }
+    }
+
+    pub fn apply_to_line(&self, l: &super::Line) -> super::Line {
+        let ms = self.scalar;
+        let mps = self.pseudo;
+        let mv = self.v_bivector;
+        let me = self.e_bivector;
+        let le = l.e_bivector;
+        let lv = l.v_bivector;
+        super::Line {
+            e_bivector: [
+                le[0] * me[0] * me[0] - le[0] * me[1] * me[1] - le[0] * me[2] * me[2]
+                    + le[0] * ms * ms
+                    + 2. * le[1] * me[0] * me[1]
+                    + 2. * le[1] * me[2] * ms
+                    + 2. * le[2] * me[0] * me[2]
+                    - 2. * le[2] * me[1] * ms,
+                2. * le[0] * me[0] * me[1] - 2. * le[0] * me[2] * ms - le[1] * me[0] * me[0]
+                    + le[1] * me[1] * me[1]
+                    - le[1] * me[2] * me[2]
+                    + le[1] * ms * ms
+                    + 2. * le[2] * me[0] * ms
+                    + 2. * le[2] * me[1] * me[2],
+                2. * le[0] * me[0] * me[2] + 2. * le[0] * me[1] * ms - 2. * le[1] * me[0] * ms
+                    + 2. * le[1] * me[1] * me[2]
+                    - le[2] * me[0] * me[0]
+                    - le[2] * me[1] * me[1]
+                    + le[2] * me[2] * me[2]
+                    + le[2] * ms * ms,
+            ],
+            v_bivector: [
+                2. * le[0] * me[0] * mv[0]
+                    - 2. * le[0] * me[1] * mv[1]
+                    - 2. * le[0] * me[2] * mv[2]
+                    - 2. * le[0] * mps * ms
+                    + 2. * le[1] * me[0] * mv[1]
+                    + 2. * le[1] * me[1] * mv[0]
+                    - 2. * le[1] * me[2] * mps
+                    + 2. * le[1] * ms * mv[2]
+                    + 2. * le[2] * me[0] * mv[2]
+                    + 2. * le[2] * me[1] * mps
+                    + 2. * le[2] * me[2] * mv[0]
+                    - 2. * le[2] * ms * mv[1]
+                    + lv[0] * me[0] * me[0]
+                    - lv[0] * me[1] * me[1]
+                    - lv[0] * me[2] * me[2]
+                    + lv[0] * ms * ms
+                    + 2. * lv[1] * me[0] * me[1]
+                    + 2. * lv[1] * me[2] * ms
+                    + 2. * lv[2] * me[0] * me[2]
+                    - 2. * lv[2] * me[1] * ms,
+                2. * le[0] * me[0] * mv[1] + 2. * le[0] * me[1] * mv[0] + 2. * le[0] * me[2] * mps
+                    - 2. * le[0] * ms * mv[2]
+                    - 2. * le[1] * me[0] * mv[0]
+                    + 2. * le[1] * me[1] * mv[1]
+                    - 2. * le[1] * me[2] * mv[2]
+                    - 2. * le[1] * mps * ms
+                    - 2. * le[2] * me[0] * mps
+                    + 2. * le[2] * me[1] * mv[2]
+                    + 2. * le[2] * me[2] * mv[1]
+                    + 2. * le[2] * ms * mv[0]
+                    + 2. * lv[0] * me[0] * me[1]
+                    - 2. * lv[0] * me[2] * ms
+                    - lv[1] * me[0] * me[0]
+                    + lv[1] * me[1] * me[1]
+                    - lv[1] * me[2] * me[2]
+                    + lv[1] * ms * ms
+                    + 2. * lv[2] * me[0] * ms
+                    + 2. * lv[2] * me[1] * me[2],
+                2. * le[0] * me[0] * mv[2] - 2. * le[0] * me[1] * mps
+                    + 2. * le[0] * me[2] * mv[0]
+                    + 2. * le[0] * ms * mv[1]
+                    + 2. * le[1] * me[0] * mps
+                    + 2. * le[1] * me[1] * mv[2]
+                    + 2. * le[1] * me[2] * mv[1]
+                    - 2. * le[1] * ms * mv[0]
+                    - 2. * le[2] * me[0] * mv[0]
+                    - 2. * le[2] * me[1] * mv[1]
+                    + 2. * le[2] * me[2] * mv[2]
+                    - 2. * le[2] * mps * ms
+                    + 2. * lv[0] * me[0] * me[2]
+                    + 2. * lv[0] * me[1] * ms
+                    - 2. * lv[1] * me[0] * ms
+                    + 2. * lv[1] * me[1] * me[2]
+                    - lv[2] * me[0] * me[0]
+                    - lv[2] * me[1] * me[1]
+                    + lv[2] * me[2] * me[2]
+                    + lv[2] * ms * ms,
+            ],
+        }
+    }
+
+    pub fn mul_scalar(&self, s: f32) -> Self {
+        Self {
+            scalar: self.scalar * s,
+            pseudo: self.pseudo * s,
+            e_bivector: (na::Vector3::from(self.e_bivector) * s).into(),
+            v_bivector: (na::Vector3::from(self.v_bivector) * s).into(),
+        }
+    }
     pub fn into_klein(&self) -> [[f32; 4]; 2] {
         let m = self;
         [
             [m.scalar, m.e_bivector[0], m.e_bivector[1], m.e_bivector[2]],
             [m.pseudo, m.v_bivector[0], m.v_bivector[1], m.v_bivector[2]],
         ]
+    }
+    pub fn is_similar_to(&self, other: &Self) -> bool {
+        let p = super::Point::random().normalize();
+        self.apply_to_point(&p) == other.apply_to_point(&p)
+    }
+    pub fn random() -> Self {
+        Self {
+            scalar: rand::random(),
+            pseudo: 0.0, // otherwise the motor can be invalid (I think)
+            e_bivector: na::Vector3::new_random().into(),
+            v_bivector: na::Vector3::new_random().into(),
+        }
+    }
+
+    pub fn squared(&self) -> Self {
+        self.mul(&self)
+    }
+    pub fn add_scalar(&self, s: f32) -> Self {
+        Self {
+            scalar: self.scalar + s,
+            ..*self
+        }
+    }
+    pub fn reverse(&self) -> Self {
+        Self {
+            e_bivector: (-na::Vec3::from(self.e_bivector)).into(),
+            v_bivector: (-na::Vec3::from(self.v_bivector)).into(),
+            ..*self
+        }
     }
 }
 
@@ -300,9 +462,13 @@ mod tests {
     use crate::*;
     #[allow(dead_code)]
     fn test_motor() -> super::Motor {
-        let p1 = Plane::new(3., &na::Vector3::new(1., 3., -2.).normalize().into());
-        let p2 = Plane::new(-2., &na::Vector3::new(2., -3., -2.).normalize().into());
-        p1.div(&p2).sqrt()
+        let p1 = Plane::new(3., &na::Vector3::new_random().normalize().into());
+        let p2 = Plane::new(-2., &na::Vector3::new_random().normalize().into());
+        let p3 = Plane::new(-5., &na::Vector3::new_random().normalize().into());
+        let p4 = Plane::new(20., &na::Vector3::new_random().normalize().into());
+        let p5 = Plane::random().nnormalize();
+        let m = p1.move_to(&p2).mul(&p3.move_to(&p4)).mul(&p3.move_to(&p5));
+        m.squared()
     }
     #[allow(dead_code)]
     fn rotating_test_motor() -> super::Motor {
@@ -318,6 +484,25 @@ mod tests {
         let p1 = Point::new(&[0., 0., 0.]);
         let p2 = Point::new(&[-6.4, 9.1, 0.4]);
         Motor::from(&p1.div(&p2).sqrt())
+    }
+
+    #[test]
+    fn sqrt1() {
+        // Taking the square root and then squaring
+        // should leave it unchanged
+        let m = test_motor().normalize();
+        let m_ = m.sqrt().squared();
+        assert_eq!(m, m_);
+        assert!(m.is_similar_to(&m_));
+    }
+    #[test]
+    fn sqrt2() {
+        // Taking the square root and then squaring
+        // should leave it unchanged
+        let m = Motor::random().normalize();
+        let m_ = m.sqrt().squared();
+        assert_eq!(m, m_);
+        assert!(m.is_similar_to(&m_));
     }
 
     #[test]
@@ -342,24 +527,34 @@ mod tests {
 
     #[test]
     fn logarithm1() {
-        let m = test_motor().normalize();
+        let m = test_motor();
         let m_ = m.ln().exp();
         println!("{:?}", m);
         println!("{:?}", m_);
-
-        let p = Point::new(&[0.1, -3.9, 0.2]);
-        let res = m.apply_to_point(&p);
-        let res_ = m_.apply_to_point(&p);
-
-        assert_eq!(res, res_);
+        println!("{:?}", m_.ln().exp());
+        // assert_eq!(m, m_);
+        // assert!(m.is_similar_to(&m_));
+        let p = Point::random().normalize();
+        println!("{:?}", m.apply_to_point(&p));
+        println!("{:?}", m_.apply_to_point(&p));
     }
     #[test]
     fn logarithm2() {
         let l = Line {
             v_bivector: [2., -3., 1.],
-            e_bivector: [-9., 4., 3.5],
-        };
+            e_bivector: [-4., 9., 5.5],
+        }
+        .normalize();
         let l_ = l.exp().ln();
         assert_eq!(l, l_);
+    }
+
+    #[test]
+    fn apply_plane() {
+        let t = Translator::new(&[1., 0., 0.]);
+        let r = Rotor::new(std::f32::consts::PI, &[0., 1., 0.]);
+        let m = t.mul_rotor(&r);
+        let p = Plane::new(0., &[1., 0., 0.]);
+        assert_eq!(m.apply_to_plane(&p), Plane::new(-1., &[-1., 0., 0.]))
     }
 }

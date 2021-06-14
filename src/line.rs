@@ -17,6 +17,13 @@ impl Line {
         }
     }
 
+    pub fn random() -> Self {
+        Self {
+            v_bivector: na::Vec3::new_random().into(),
+            e_bivector: na::Vec3::new_random().into(),
+        }
+    }
+
     pub fn dual(&self) -> Self {
         Self {
             v_bivector: self.e_bivector,
@@ -45,6 +52,19 @@ impl Line {
         }
     }
 
+    pub fn norm(&self) -> f32 {
+        na::Vec3::from(self.e_bivector).norm()
+    }
+    pub fn inorm(&self) -> f32 {
+        na::Vec3::from(self.v_bivector).norm()
+    }
+    pub fn normalize(&self) -> Self {
+        Self {
+            v_bivector: self.v_bivector,
+            e_bivector: na::Vec3::from(self.e_bivector).normalize().into(),
+        }
+    }
+
     pub fn exp(&self) -> super::Motor {
         let mut l = na::Vector3::from(self.e_bivector);
         let ao2 = -l.norm();
@@ -64,6 +84,31 @@ impl Line {
             ],
             e_bivector: exp_e_e.into(),
         }
+        // let sdbb = l.norm();
+        // let dbb = sdbb * sdbb;
+        // let ssdbb = sdbb.sin();
+        // let csdbb = sdbb.cos();
+        // let mbb = super::meet::lines(&self, &self);
+        // super::Motor {
+        //     scalar: csdbb,
+        //     pseudo: mbb.0 * ssdbb / (2. * sdbb),
+        //     e_bivector: [
+        //         self.e_bivector[0] * ssdbb / sdbb,
+        //         self.e_bivector[1] * ssdbb / sdbb,
+        //         self.e_bivector[2] * ssdbb / sdbb,
+        //     ],
+        //     v_bivector: [
+        //         csdbb * mbb.0 * self.e_bivector[0] / (2. * dbb)
+        //             + mbb.0 * self.e_bivector[0] * ssdbb / (2. * sdbb)
+        //             + ssdbb * self.v_bivector[0] / sdbb,
+        //         csdbb * mbb.0 * self.e_bivector[1] / (2. * dbb)
+        //             + mbb.0 * self.e_bivector[1] * ssdbb / (2. * sdbb)
+        //             + ssdbb * self.v_bivector[1] / sdbb,
+        //         csdbb * mbb.0 * self.e_bivector[2] / (2. * dbb)
+        //             + mbb.0 * self.e_bivector[2] * ssdbb / (2. * sdbb)
+        //             + ssdbb * self.v_bivector[2] / sdbb,
+        //     ],
+        // }
     }
 
     pub fn mul(&self, other: &Self) -> super::Motor {
@@ -107,6 +152,19 @@ impl Line {
 
     pub fn div_scalar(&self, s: f32) -> Self {
         self.mul_scalar(1. / s)
+    }
+
+    pub fn add(&self, other: &Self) -> Self {
+        Self {
+            e_bivector: (na::Vector3::from(self.e_bivector) + na::Vector3::from(other.e_bivector))
+                .into(),
+            v_bivector: (na::Vector3::from(self.v_bivector) + na::Vector3::from(other.v_bivector))
+                .into(),
+        }
+    }
+
+    pub fn move_to(&self, dest: &Self) -> super::Motor {
+        dest.div(&self).sqrt()
     }
 }
 
@@ -158,6 +216,17 @@ mod tests {
     }
 
     #[test]
+    fn move_to() {
+        let l1 = Line::random().mul_scalar(6.5).normalize();
+        let l2 = Line::random().mul_scalar(-10.7).normalize();
+        let l3 = Line::random().mul_scalar(-3.).normalize();
+        let m1 = l1.move_to(&l2);
+        let m2 = l2.move_to(&l3);
+        assert_eq!(l2, m1.apply_to_line(&l1));
+        assert_eq!(l3, m2.apply_to_line(&l2));
+    }
+
+    #[test]
     fn neg() {
         let l = super::Line {
             v_bivector: [1., 1., 1.],
@@ -187,14 +256,19 @@ mod tests {
     #[test]
     fn exp_sanity2() {
         // 1, 0, 0 rotated 180 deg around y axis should become -1, 0, 0
+        // and translating it 0, 1, 1, should make -1, 1, 1
+        let t = super::Line {
+            v_bivector: [0., 1., 1.],
+            e_bivector: [0.0; 3],
+        };
         let l = super::Line {
             v_bivector: [0.0f32; 3],
             e_bivector: [0., 1., 0.],
         };
         let angle = std::f32::consts::PI;
-        let v = l.mul_scalar(-angle * 0.5).exp();
+        let v = l.mul_scalar(-angle * 0.5).add(&t.mul_scalar(0.5)).exp();
         let p = Point::new(&[1., 0., 0.]);
-        assert_eq!(Point::new(&[-1., 0., 0.]), v.apply_to_point(&p));
+        assert_eq!(Point::new(&[-1., 1., 1.]), v.apply_to_point(&p));
     }
 
     #[test]

@@ -13,6 +13,10 @@ def apply(m, g):
     return m * g * ~m
 
 
+def move_to(s, d):
+    return sqrt(d * inverse(s))
+
+
 def rotor(angle, line):
     return math.cos(angle / 2.0) + math.sin(angle / 2.0) * line.normalized()
 
@@ -93,8 +97,8 @@ def multivec(a: list) -> ganja.PGA3D:
     return multivec_a
 
 
-def trivec_sym(n): return multivec([(f"{n}[0]", "e123"), (f"{n}[1]", "e032"),
-                                    (f"{n}[2]", "e013"), (f"{n}[3]", "e021")])
+def trivec_sym(n="t"): return multivec([(f"{n}[0]", "e123"), (f"{n}[1]", "e032"),
+                                        (f"{n}[2]", "e013"), (f"{n}[3]", "e021")])
 
 
 def point_sym(n): return multivec([(1, "e123"), (f"{n}[1]", "e032"),
@@ -109,8 +113,8 @@ def trivec_inf_sym(n): return multivec([(f"{n}[1]", "e032"),
                                         (f"{n}[2]", "e013"), (f"{n}[3]", "e021")])
 
 
-def vec_sym(n): return multivec([(f"{n}[0]", "e0"), (f"{n}[1]", "e1"),
-                                 (f"{n}[2]", "e2"), (f"{n}[3]", "e3")])
+def vec_sym(n="pvec"): return multivec([(f"{n}[0]", "e0"), (f"{n}[1]", "e1"),
+                                        (f"{n}[2]", "e2"), (f"{n}[3]", "e3")])
 
 
 def e_bivec_sym(n): return multivec(
@@ -121,7 +125,7 @@ def v_bivec_sym(n): return multivec(
     [(f"{n}[0]", "e01"), (f"{n}[1]", "e02"), (f"{n}[2]", "e03")])
 
 
-def motor_sym(s="s", ps="ps", e="e", v="v"):
+def motor_sym(s="ms", ps="mps", e="me", v="mv"):
     return scalar_sym(s) + pseudo_sym(ps) + v_bivec_sym(v) + e_bivec_sym(e)
 
 
@@ -133,7 +137,7 @@ def simple_motor_sym(s, e, v):
     return scalar_sym(s) + v_bivec_sym(v) + e_bivec_sym(e)
 
 
-def line_sym(v="v", e="e"):
+def line_sym(v="lv", e="le"):
     return e_bivec_sym(e) + v_bivec_sym(v)
 
 

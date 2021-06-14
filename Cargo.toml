@@ -7,4 +7,5 @@ edition = "2018"
 
 [dependencies]
 num-traits = "0.2.14"
-na = { version = "0.26.2", package = "nalgebra" }
+na = { version = "0.24.0" }
+rand = "0.8.3"

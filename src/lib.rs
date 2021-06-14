@@ -47,10 +47,10 @@ pub const trivector: [&'static str; 4] = ["e123", "e032", "e013", "e021"];
 pub struct PseudoScalar(pub f32);
 
 impl PseudoScalar {
-    fn mul_scalar(&self, s: f32) -> Self {
+    pub fn mul_scalar(&self, s: f32) -> Self {
         Self(self.0 * s)
     }
-    fn div_scalar(&self, s: f32) -> Self {
+    pub fn div_scalar(&self, s: f32) -> Self {
         self.mul_scalar(1. / s)
     }
 }

@@ -34,6 +34,14 @@ impl Point {
         [-self.trivector[1], -self.trivector[2], -self.trivector[3]]
     }
 
+    pub fn random() -> Self {
+        use rand::prelude::*;
+        let mut rng = rand::thread_rng();
+        Self {
+            trivector: [1., rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>()],
+        }
+    }
+
     pub fn dual(&self) -> super::Plane {
         super::Plane {
             vector: self.trivector,
@@ -43,6 +51,15 @@ impl Point {
     pub fn neg(&self) -> Self {
         Self {
             trivector: (-na::Vector4::from_row_slice(&self.trivector)).into(),
+        }
+    }
+
+    pub fn norm(&self) -> f32 {
+        self.trivector[0]
+    }
+    pub fn normalize(&self) -> Self {
+        Self {
+            trivector: (na::Vec4::from(self.trivector) / self.norm()).into(),
         }
     }
 
@@ -74,6 +91,10 @@ impl Point {
     pub fn div(&self, other: &Self) -> super::Translator {
         self.mul(&other.inverse())
     }
+
+    pub fn move_to(&self, dest: &Self) -> super::Translator {
+        dest.div(&self).sqrt()
+    }
 }
 
 impl PartialEq for Point {
@@ -86,9 +107,15 @@ impl PartialEq for Point {
     }
 }
 
+impl From<[f32; 3]> for Point {
+    fn from(x: [f32; 3]) -> Self {
+        Self::new(&x)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::Plane;
+    use crate::*;
     #[test]
     fn new() {
         let p = super::Point::new(&[4., 3., 9.]);
@@ -111,5 +138,16 @@ mod tests {
 
         let p = super::Point::new(&[4., -2., 7.]);
         assert_eq!(p, p.dual().dual());
+    }
+
+    #[test]
+    fn move_to() {
+        let p1 = Point::random().normalize();
+        let p2 = Point::random().normalize();
+        let p3 = Point::random().normalize();
+        let m1 = p1.move_to(&p2);
+        let m2 = p2.move_to(&p3);
+        assert_eq!(p2, m1.apply_to_point(&p1));
+        assert_eq!(p3, m2.apply_to_point(&p2));
     }
 }
