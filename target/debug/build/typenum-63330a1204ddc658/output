@@ -1,2 +1,0 @@
-cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/pepijnvanderklei/Desktop/Thesis/Code/ppga/target/debug/build/typenum-63330a1204ddc658/out/consts.rs
-cargo:rustc-env=TYPENUM_BUILD_OP=/Users/pepijnvanderklei/Desktop/Thesis/Code/ppga/target/debug/build/typenum-63330a1204ddc658/out/op.rs
