@@ -60,6 +60,7 @@ def sqrt(self):
     left_num = 1 + self
     left_den = sp.sqrt(2 * (1 + scalar))
     right_num = self[self._base.index("e0123")]
+    right_num = ganja.PGA3D(right_num, self._base.index("e0123"))
     right_den = 2 * (1 + scalar)
     return left_num * (1 / left_den) * (1 - right_num * (1 / right_den))
 
