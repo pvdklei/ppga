@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub struct Line {
     pub e_bivector: [f32; 3],
     pub v_bivector: [f32; 3],
@@ -21,6 +21,13 @@ impl Line {
         Self {
             v_bivector: na::Vec3::new_random().into(),
             e_bivector: na::Vec3::new_random().into(),
+        }
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            v_bivector: [0.0; 3],
+            e_bivector: [0.0; 3],
         }
     }
 
@@ -65,50 +72,74 @@ impl Line {
         }
     }
 
+    // PGA4CS chapter 5.6 and 7
     pub fn exp(&self) -> super::Motor {
-        let mut l = na::Vector3::from(self.e_bivector);
-        let ao2 = -l.norm();
-        l = l.normalize();
+        let (e, v) = self.decompose();
+        let half_phi = -e.norm();
+        let e_hat = e.normalize();
+        let cos_half_phi = half_phi.cos();
+        let sin_half_phi = half_phi.sin();
 
-        let exp_v_v = self.v_bivector; // and its scalar component is 1
-        let exp_e_s = ao2.cos();
-        let exp_e_e = -ao2.sin() * l;
+        let eucl_e = e_hat.e_bivector;
+        let eucl_v = e_hat.v_bivector;
+        let van_v = v.v_bivector;
 
         super::Motor {
-            scalar: exp_e_s,
-            pseudo: exp_e_e[0] * exp_v_v[0] + exp_e_e[1] * exp_v_v[1] + exp_e_e[2] * exp_v_v[2],
+            scalar: cos_half_phi,
+            pseudo: -eucl_e[0] * sin_half_phi * van_v[0]
+                - eucl_e[1] * sin_half_phi * van_v[1]
+                - eucl_e[2] * sin_half_phi * van_v[2],
             v_bivector: [
-                exp_e_e[1] * exp_v_v[2] - exp_e_e[2] * exp_v_v[1] + exp_e_s * exp_v_v[0],
-                -exp_e_e[0] * exp_v_v[2] + exp_e_e[2] * exp_v_v[0] + exp_e_s * exp_v_v[1],
-                exp_e_e[0] * exp_v_v[1] - exp_e_e[1] * exp_v_v[0] + exp_e_s * exp_v_v[2],
+                cos_half_phi * van_v[0] - eucl_e[1] * sin_half_phi * van_v[2]
+                    + eucl_e[2] * sin_half_phi * van_v[1]
+                    - eucl_v[0] * sin_half_phi,
+                cos_half_phi * van_v[1] + eucl_e[0] * sin_half_phi * van_v[2]
+                    - eucl_e[2] * sin_half_phi * van_v[0]
+                    - eucl_v[1] * sin_half_phi,
+                cos_half_phi * van_v[2] - eucl_e[0] * sin_half_phi * van_v[1]
+                    + eucl_e[1] * sin_half_phi * van_v[0]
+                    - eucl_v[2] * sin_half_phi,
             ],
-            e_bivector: exp_e_e.into(),
+            e_bivector: [
+                -eucl_e[0] * sin_half_phi,
+                -eucl_e[1] * sin_half_phi,
+                -eucl_e[2] * sin_half_phi,
+            ],
         }
-        // let sdbb = l.norm();
-        // let dbb = sdbb * sdbb;
-        // let ssdbb = sdbb.sin();
-        // let csdbb = sdbb.cos();
-        // let mbb = super::meet::lines(&self, &self);
-        // super::Motor {
-        //     scalar: csdbb,
-        //     pseudo: mbb.0 * ssdbb / (2. * sdbb),
-        //     e_bivector: [
-        //         self.e_bivector[0] * ssdbb / sdbb,
-        //         self.e_bivector[1] * ssdbb / sdbb,
-        //         self.e_bivector[2] * ssdbb / sdbb,
-        //     ],
-        //     v_bivector: [
-        //         csdbb * mbb.0 * self.e_bivector[0] / (2. * dbb)
-        //             + mbb.0 * self.e_bivector[0] * ssdbb / (2. * sdbb)
-        //             + ssdbb * self.v_bivector[0] / sdbb,
-        //         csdbb * mbb.0 * self.e_bivector[1] / (2. * dbb)
-        //             + mbb.0 * self.e_bivector[1] * ssdbb / (2. * sdbb)
-        //             + ssdbb * self.v_bivector[1] / sdbb,
-        //         csdbb * mbb.0 * self.e_bivector[2] / (2. * dbb)
-        //             + mbb.0 * self.e_bivector[2] * ssdbb / (2. * sdbb)
-        //             + ssdbb * self.v_bivector[2] / sdbb,
-        //     ],
-        // }
+    }
+
+    /// PGA4CS chapter 5.6
+    /// Decomposes a line into a vanishing and euclidian line,
+    /// so that
+    ///     self = vanishing + euclidian.
+    /// These parts commute, so that
+    ///     vanishing * euclidian = euclidian * vanishing
+    pub fn decompose(&self) -> (Line, Line) {
+        let rev = self.reverse();
+        let bdb = super::inner::lines(&self, &rev);
+        if bdb.abs() < 0.001 {
+            return (Line::zero(), *self);
+        }
+        let bmb = super::meet::lines(&self, &rev);
+        let be = self.e_bivector;
+        let bv = self.v_bivector;
+        let van = Line {
+            v_bivector: [
+                -0.5 * be[0] * bmb.0 / bdb,
+                -0.5 * be[1] * bmb.0 / bdb,
+                -0.5 * be[2] * bmb.0 / bdb,
+            ],
+            e_bivector: [0.0; 3],
+        };
+        let eucl = Line {
+            v_bivector: [
+                bv[0] + 0.5 * be[0] * bmb.0 / bdb,
+                bv[1] + 0.5 * be[1] * bmb.0 / bdb,
+                bv[2] + 0.5 * be[2] * bmb.0 / bdb,
+            ],
+            e_bivector: [be[0], be[1], be[2]],
+        };
+        (eucl, van)
     }
 
     pub fn mul(&self, other: &Self) -> super::Motor {
@@ -213,6 +244,16 @@ mod tests {
 
         let l = super::Line::new(&[4., -2., 9.], &[-4., 6., 3.]);
         assert_eq!(l, l.dual().dual());
+    }
+
+    #[test]
+    fn decompose() {
+        // decomposition should add up to original result,
+        // and to parts should commute.
+        let l1 = Line::random();
+        let (e, v) = l1.decompose();
+        assert_eq!(l1, e.add(&v));
+        assert_eq!(e.mul(&v), v.mul(&e));
     }
 
     #[test]

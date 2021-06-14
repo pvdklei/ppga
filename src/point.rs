@@ -42,6 +42,12 @@ impl Point {
         }
     }
 
+    pub fn random_dir() -> Self {
+        let mut x = Self::random();
+        x.trivector[0] = 0.0;
+        x
+    }
+
     pub fn dual(&self) -> super::Plane {
         super::Plane {
             vector: self.trivector,

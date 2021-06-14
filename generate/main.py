@@ -5,8 +5,8 @@ import sympy
 
 
 def main():
-    p = utils.trivec_sym()
-    print(p.normalized())
+    exp_4cs()
+
     return
     l1 = utils.point(3, -2, 7) & utils.point(7, 1, -1)
     l1 = l1.normalized()
@@ -20,6 +20,25 @@ def main():
     m = utils.motor_sym()
     l = utils.line_sym()
     print(utils.apply(m, l))
+
+
+def bivec_decomp():
+    b = utils.line_sym(e="be", v="bv")
+    bdb = utils.scalar_sym("bdb")
+    bmb = utils.pseudo_sym("bmb.0")
+    eucl = b * (1 - 0.5 * bmb * (1/bdb[0]))
+    van = 0.5 * b * bmb * (1 / bdb[0])
+    print(eucl)
+    print(van)
+
+
+def exp_4cs():
+    eucl = utils.line_sym(e="eucl_e", v="eucl_v")
+    van = utils.v_bivec_sym("van_v")
+    chalfphi = utils.scalar_sym("cos_half_phi")
+    shalfphi = utils.scalar_sym("sin_half_phi")
+    exp = (1 + van) * (chalfphi - shalfphi * eucl)
+    print(exp)
 
 
 def exp_ganja():
@@ -38,11 +57,6 @@ def exp_ganja():
 
 
 def log_4cs():
-    # a = utils.scalar_sym("a")
-    # bi = utils.pseudo_sym("bi")
-    # l = utils.line_sym(e="le", v="lv")
-    # print((a + bi) * l)
-
     w = utils.line_sym(e="we", v="wv")
     wdotwrev = utils.scalar_sym("wdotwrev")
     sqrt = utils.scalar_sym("sqrt_wdotwrev")

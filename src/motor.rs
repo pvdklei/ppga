@@ -83,6 +83,7 @@ impl Motor {
         fn sqrt(x: f32) -> f32 {
             x.sqrt()
         }
+        // TODO: Optimize this
         Self {
             scalar: sqrt(2. * s + 2.) / 2.,
             pseudo: sqrt(2.) * ps / (4. * sqrt(s + 1.)),
@@ -103,6 +104,11 @@ impl Motor {
                     + sqrt(2.) * v[2] / (2. * (s * sqrt(s + 1.) + sqrt(s + 1.))),
             ],
         }
+    }
+
+    /// Square root for a simple motor (no grade 4 part)
+    pub fn ssqrt(&self) -> Self {
+        self.add_scalar(1.).normalize()
     }
 
     /// PGA4CS page 69
@@ -200,6 +206,10 @@ impl Motor {
             ],
             e_bivector: [me[0] * ts, me[1] * ts, me[2] * ts],
         }
+    }
+
+    pub fn apply_to<T: Applicable>(&self, g: &T) -> T {
+        g.apply(self)
     }
 
     pub fn apply_to_point(&self, p: &super::Point) -> super::Point {
@@ -406,7 +416,7 @@ impl Motor {
     pub fn random() -> Self {
         Self {
             scalar: rand::random(),
-            pseudo: 0.0, // otherwise the motor can be invalid (I think)
+            pseudo: rand::random(), // or should this be 0??
             e_bivector: na::Vector3::new_random().into(),
             v_bivector: na::Vector3::new_random().into(),
         }
@@ -446,6 +456,17 @@ impl PartialEq for Motor {
     }
 }
 
+impl From<&super::Line> for Motor {
+    fn from(l: &super::Line) -> Self {
+        Self {
+            scalar: 0.,
+            pseudo: 0.,
+            v_bivector: l.v_bivector,
+            e_bivector: l.e_bivector,
+        }
+    }
+}
+
 impl From<&super::Translator> for Motor {
     fn from(t: &super::Translator) -> Self {
         Self {
@@ -454,6 +475,37 @@ impl From<&super::Translator> for Motor {
             v_bivector: t.v_bivector,
             pseudo: 0.0,
         }
+    }
+}
+
+impl From<&super::Rotor> for Motor {
+    fn from(r: &super::Rotor) -> Self {
+        Self {
+            scalar: r.scalar,
+            e_bivector: r.e_bivector,
+            v_bivector: [0.; 3],
+            pseudo: 0.,
+        }
+    }
+}
+
+pub trait Applicable {
+    fn apply(&self, m: &Motor) -> Self;
+}
+
+impl Applicable for super::Point {
+    fn apply(&self, m: &Motor) -> Self {
+        m.apply_to_point(self)
+    }
+}
+impl Applicable for super::Line {
+    fn apply(&self, m: &Motor) -> Self {
+        m.apply_to_line(self)
+    }
+}
+impl Applicable for super::Plane {
+    fn apply(&self, m: &Motor) -> Self {
+        m.apply_to_plane(self)
     }
 }
 
@@ -469,6 +521,12 @@ mod tests {
         let p5 = Plane::random().nnormalize();
         let m = p1.move_to(&p2).mul(&p3.move_to(&p4)).mul(&p3.move_to(&p5));
         m.squared()
+    }
+    fn tm() -> super::Motor {
+        let p1 = Plane::new(1., &[1., 0., 0.]);
+        let p2 = Plane::new(6., &na::Vec3::new(0., 0., 1.).into());
+        let p3 = Plane::new(-4., &na::Vec3::new(0., 1., 0.).into());
+        p1.move_to(&p2).mul(&p2.move_to(&p3))
     }
     #[allow(dead_code)]
     fn rotating_test_motor() -> super::Motor {
@@ -500,9 +558,21 @@ mod tests {
         // Taking the square root and then squaring
         // should leave it unchanged
         let m = Motor::random().normalize();
-        let m_ = m.sqrt().squared();
+        let m_ = m.ssqrt().squared();
         assert_eq!(m, m_);
         assert!(m.is_similar_to(&m_));
+    }
+    #[test]
+    fn sqrt3() {
+        // Taking the square root should only perform half the transformation.
+        // so a full turn becomes a half turn. Twice the square root should do
+        // a quarter of the rotation, etc
+        let r = Rotor::new(std::f32::consts::PI * 2., &[0., 1., 0.]);
+        let m = Motor::from(&r);
+        let p = m.sqrt().apply_to_point(&Point::new(&[1., 0., 0.]));
+        assert_eq!(p, Point::new(&[-1., 0., 0.]));
+        let p = m.sqrt().sqrt().apply_to_point(&Point::new(&[1., 0., 0.]));
+        assert_eq!(p, Point::new(&[0., 0., -1.]));
     }
 
     #[test]
@@ -527,16 +597,19 @@ mod tests {
 
     #[test]
     fn logarithm1() {
-        let m = test_motor();
+        let m = tm().normalize();
         let m_ = m.ln().exp();
         println!("{:?}", m);
         println!("{:?}", m_);
         println!("{:?}", m_.ln().exp());
         // assert_eq!(m, m_);
-        // assert!(m.is_similar_to(&m_));
-        let p = Point::random().normalize();
+        let p = Point::new(&[2., 3., 4.]);
+        println!("{:?}", p);
         println!("{:?}", m.apply_to_point(&p));
         println!("{:?}", m_.apply_to_point(&p));
+        println!("{:?}", m_.ln().exp().apply_to_point(&p));
+
+        assert!(m.is_similar_to(&m_));
     }
     #[test]
     fn logarithm2() {
