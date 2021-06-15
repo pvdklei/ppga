@@ -1,12 +1,10 @@
 import utils
 import sympy
+import ganja
 
 
 def main():
-    m = utils.motor_sym()
-    print(utils.inverse(m))
-    # cayley_ln()
-
+    outer_exp()
 
 
 def bivec_decomp():
@@ -18,10 +16,16 @@ def bivec_decomp():
     print(eucl)
     print(van)
 
-def cayley_ln():
-    m = utils.motor_sym()
-    log = (m - 1) * utils.inverse(m + 1)
-    print(log)
+
+def outer_exp():
+    a = utils.e_bivec_sym("a")
+    b = utils.v_bivec_sym("b")
+    s = a+b
+    sds = utils.pseudo_sym("sds") # in fact 0.5 s ^ s
+    sds = 0.5 * (s ^ s)
+    exp = (1 + s + sds) * (1 / (1 - sds[0])) # euclidian part assumed normalized
+                                   # so inverse == reverse
+    print(exp)
 
 
 def exp_4cs():

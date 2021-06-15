@@ -101,15 +101,18 @@ impl Point {
     pub fn move_to(&self, dest: &Self) -> super::Translator {
         dest.div(&self).sqrt()
     }
-}
-
-impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool {
+    pub fn is_similar_to(&self, d: f32, other: &Self) -> bool {
         !self
             .trivector
             .iter()
             .zip(other.trivector.iter())
-            .any(|(a, b)| (a - b).abs() > 0.1)
+            .any(|(a, b)| (a - b).abs() > d)
+    }
+}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.is_similar_to(0.01, other)
     }
 }
 

@@ -268,7 +268,7 @@ class PGA3D:
         
         Multivector addition
         """
-        if type(b) in (int, float):
+        if type(b) is not PGA3D:
             return a.adds(b)
         res = a.mvec.copy()
         res[0] = a[0]+b[0]

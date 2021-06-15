@@ -204,8 +204,19 @@ impl Motor {
     }
 
     /// Just like a log, maps a motor to a bivector and can be reversed.
+    /// Tingelstad 2018 (https://link.springer.com/article/10.1007/s00006-018-0850-2)
     pub fn cayley(&self) -> super::Line {
         super::Line::from(&self.neg().add_scalar(1.0).div(&self.add_scalar(1.0)))
+    }
+
+    /// Again a map to the bivectors (Tingelstad, 2018)
+    pub fn outer_ln(&self) -> super::Line {
+        unimplemented!();
+    }
+    /// A simplified version on Tingelstad (2018) Steven de
+    /// Keninck sent to me in an image.
+    pub fn outer_ln_steven(&self) -> super::Line {
+        super::Line::from(self).div_scalar(self.scalar)
     }
 
     pub fn mul(&self, other: &Self) -> Self {
@@ -481,9 +492,10 @@ impl Motor {
             [m.pseudo, m.v_bivector[0], m.v_bivector[1], m.v_bivector[2]],
         ]
     }
-    pub fn is_similar_to(&self, other: &Self) -> bool {
+    pub fn is_similar_to(&self, d: f32, other: &Self) -> bool {
         let p = super::Point::random().normalize();
-        self.apply_to_point(&p) == other.apply_to_point(&p)
+        self.apply_to_point(&p)
+            .is_similar_to(d, &other.apply_to_point(&p))
     }
     pub fn random() -> Self {
         Self {
@@ -626,25 +638,25 @@ mod tests {
         let m = test_motor();
         let m_ = m.sqrt().squared();
         assert_eq!(m, m_);
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
     }
     #[test]
     fn sqrt2() {
         let m = test_motor2();
         let m_ = m.sqrt().squared();
         assert_eq!(m, m_);
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
     }
     #[test]
     fn sqrt3() {
         let m = rotating_test_motor();
         let m_ = m.sqrt().squared();
         assert_eq!(m, m_);
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
         let m = translating_test_motor();
         let m_ = m.sqrt().squared();
         assert_eq!(m, m_);
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
     }
     #[test]
     fn sqrt4() {
@@ -652,11 +664,11 @@ mod tests {
         let m = rotating_test_motor();
         let m_ = m.ssqrt().squared();
         assert_eq!(m, m_);
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
         let m = translating_test_motor();
         let m_ = m.ssqrt().squared();
         assert_eq!(m, m_);
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
     }
     #[test]
     fn sqrt5() {
@@ -702,7 +714,7 @@ mod tests {
         println!("{:?}", p);
         println!("{:?}", m.apply_to_point(&p));
         println!("{:?}", m_.apply_to_point(&p));
-        assert!(m.is_similar_to(&m_));
+        assert!(m.is_similar_to(0.01, &m_));
     }
     #[test]
     fn logarithm2() {
@@ -737,5 +749,24 @@ mod tests {
         let m = t.mul_rotor(&r);
         let p = Plane::new(0., &[1., 0., 0.]);
         assert_eq!(m.apply_to_plane(&p), Plane::new(-1., &[-1., 0., 0.]))
+    }
+
+    #[test]
+    fn outer_exp_steven() {
+        let m = test_motor();
+        let m_ = m.outer_ln_steven().outer_exp_steven().normalize();
+        println!("{:?}", m);
+        println!("{:?}", m_);
+        assert!(m.is_similar_to(0.1, &m_));
+        let m = rotating_test_motor();
+        let m_ = m.outer_ln_steven().outer_exp_steven().normalize();
+        println!("{:?}", m);
+        println!("{:?}", m_);
+        assert!(m.is_similar_to(0.1, &m_));
+        let m = translating_test_motor();
+        let m_ = m.outer_ln_steven().outer_exp_steven().normalize();
+        println!("{:?}", m);
+        println!("{:?}", m_);
+        assert!(m.is_similar_to(0.01, &m_));
     }
 }

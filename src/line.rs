@@ -119,9 +119,40 @@ impl Line {
     }
 
     /// Just like the exponent, maps to a motor space and back (inverse).
+    /// Tingelstad 2018 (https://link.springer.com/article/10.1007/s00006-018-0850-2)
     pub fn cayley(&self) -> super::Motor {
         let x = super::Motor::from(self);
         x.neg().add_scalar(1.0).inverse().mul(&x.add_scalar(1.0))
+    }
+
+    /// Also maps to a motor (Tingelstad, 2018)
+    /// Assumes line is normalized. Do not know
+    /// the inverse yet.
+    pub fn outer_exp(&self) -> super::Motor {
+        let a = self.e_bivector;
+        let b = self.v_bivector;
+        let sds = super::inner::lines(&self, &self);
+        super::Motor {
+            scalar: -a[0] * a[0] - a[1] * a[1] - a[2] * a[2] + 1.,
+            pseudo: a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + sds,
+            v_bivector: [
+                -a[0] * sds + a[1] * b[2] - a[2] * b[1] + b[0],
+                -a[0] * b[2] - a[1] * sds + a[2] * b[0] + b[1],
+                a[0] * b[1] - a[1] * b[0] - a[2] * sds + b[2],
+            ],
+            e_bivector: [2. * a[0], 2. * a[1], 2. * a[2]],
+        }
+    }
+    /// Simplified version Steven de Keninck sent to me in an image.
+    pub fn outer_exp_steven(&self) -> super::Motor {
+        super::Motor {
+            scalar: 1.0,
+            pseudo: na::Vec3::from(self.v_bivector)
+                .dot(&na::Vec3::from(self.e_bivector))
+                .into(),
+            v_bivector: self.v_bivector,
+            e_bivector: self.e_bivector,
+        }
     }
 
     /// SIGGRAPH Course Notes 8.1.3 & 8.1.4.
