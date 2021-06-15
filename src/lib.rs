@@ -2,7 +2,10 @@
 //! geometric algebra, i.e., G(3,0,1). It uses the memory model and
 //! conventions described in Dorst 2020 (https://bivector.net/PGA4CS.html).
 //!
-//! Most calculations are generated using the python version of enki's
+//! Some functions use the variant proposed by Gunn (2018)
+//! (https://bivector.net/PROJECTIVE_GEOMETRIC_ALGEBRA.pdf)
+//!
+//! Most calculations are generated using the python version of Steven de Keninck's
 //! ganja.js (https://github.com/enkimute/ganja.js/) and sympy. See the
 //! generate folder for details.
 //!
