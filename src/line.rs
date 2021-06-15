@@ -120,15 +120,18 @@ impl Line {
 
     /// Just like the exponent, maps to a motor space and back (inverse).
     /// Tingelstad 2018 (https://link.springer.com/article/10.1007/s00006-018-0850-2)
-    pub fn cayley(&self) -> super::Motor {
+    pub fn cayley_exp(&self) -> super::Motor {
         let x = super::Motor::from(self);
-        x.neg().add_scalar(1.0).inverse().mul(&x.add_scalar(1.0))
+        // To get the exact same, a reverse is needed, don't think
+        // the underlying transform is the same of you leave it out.
+        x.add_scalar(1.0).div(&x.neg().add_scalar(1.0)).reverse()
     }
 
     /// Also maps to a motor (Tingelstad, 2018)
     /// Assumes line is normalized. Do not know
-    /// the inverse yet.
-    pub fn outer_exp(&self) -> super::Motor {
+    /// the inverse yet. I think this one is not correct
+    /// yet as well.
+    pub fn outer_exp_true(&self) -> super::Motor {
         let a = self.e_bivector;
         let b = self.v_bivector;
         let sds = super::inner::lines(&self, &self);
@@ -144,7 +147,7 @@ impl Line {
         }
     }
     /// Simplified version Steven de Keninck sent to me in an image.
-    pub fn outer_exp_steven(&self) -> super::Motor {
+    pub fn outer_exp(&self) -> super::Motor {
         super::Motor {
             scalar: 1.0,
             pseudo: na::Vec3::from(self.v_bivector)

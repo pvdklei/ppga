@@ -8,6 +8,13 @@ fn main() {
     let l1 = join::points(&p1, &p2);
     let l2 = join::points(&p3, &p4);
     let m = l2.div(&l1).sqrt();
-    println!("{:?}", l2);
-    println!("{:?}", m.apply_to(&l1));
+    let m_ = m.cayley_ln().cayley_exp();
+    let p = Point::random();
+    println!("{:?}", m);
+    println!("{:?}", m.cayley_ln());
+    println!("{:?}", m_);
+    println!("{:?}", m.is_similar_to(0.3, &m_));
+
+    println!("{:?}", m.apply_to(&p));
+    println!("{:?}", m_.apply_to(&p));
 }

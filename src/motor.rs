@@ -205,17 +205,17 @@ impl Motor {
 
     /// Just like a log, maps a motor to a bivector and can be reversed.
     /// Tingelstad 2018 (https://link.springer.com/article/10.1007/s00006-018-0850-2)
-    pub fn cayley(&self) -> super::Line {
+    pub fn cayley_ln(&self) -> super::Line {
         super::Line::from(&self.neg().add_scalar(1.0).div(&self.add_scalar(1.0)))
     }
 
     /// Again a map to the bivectors (Tingelstad, 2018)
-    pub fn outer_ln(&self) -> super::Line {
+    pub fn outer_ln_true(&self) -> super::Line {
         unimplemented!();
     }
     /// A simplified version on Tingelstad (2018) Steven de
     /// Keninck sent to me in an image.
-    pub fn outer_ln_steven(&self) -> super::Line {
+    pub fn outer_ln(&self) -> super::Line {
         super::Line::from(self).div_scalar(self.scalar)
     }
 
@@ -737,12 +737,6 @@ mod tests {
     }
 
     #[test]
-    fn cayley() {
-        let m = test_motor();
-        assert_eq!(m, m.cayley().cayley())
-    }
-
-    #[test]
     fn apply_plane() {
         let t = Translator::new(&[1., 0., 0.]);
         let r = Rotor::new(std::f32::consts::PI, &[0., 1., 0.]);
@@ -750,21 +744,28 @@ mod tests {
         let p = Plane::new(0., &[1., 0., 0.]);
         assert_eq!(m.apply_to_plane(&p), Plane::new(-1., &[-1., 0., 0.]))
     }
-
     #[test]
-    fn outer_exp_steven() {
+    fn cayley() {
+        let m = test_motor2().normalize();
+        let m_ = m.cayley_ln().cayley_exp();
+        println!("{:?}", m);
+        println!("{:?}", m_);
+        assert!(m.is_similar_to(0.1, &m_));
+    }
+    #[test]
+    fn outer_exp() {
         let m = test_motor();
-        let m_ = m.outer_ln_steven().outer_exp_steven().normalize();
+        let m_ = m.outer_ln().outer_exp().normalize();
         println!("{:?}", m);
         println!("{:?}", m_);
         assert!(m.is_similar_to(0.1, &m_));
         let m = rotating_test_motor();
-        let m_ = m.outer_ln_steven().outer_exp_steven().normalize();
+        let m_ = m.outer_ln().outer_exp().normalize();
         println!("{:?}", m);
         println!("{:?}", m_);
         assert!(m.is_similar_to(0.1, &m_));
         let m = translating_test_motor();
-        let m_ = m.outer_ln_steven().outer_exp_steven().normalize();
+        let m_ = m.outer_ln().outer_exp().normalize();
         println!("{:?}", m);
         println!("{:?}", m_);
         assert!(m.is_similar_to(0.01, &m_));
