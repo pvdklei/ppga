@@ -5,7 +5,7 @@ import sympy
 
 
 def main():
-    exp_4cs()
+    log_gunn()
 
     return
     l1 = utils.point(3, -2, 7) & utils.point(7, 1, -1)
@@ -41,7 +41,17 @@ def exp_4cs():
     print(exp)
 
 
-def exp_ganja():
+def exp_gunn():
+    cu = utils.scalar_sym("cu")
+    su = utils.scalar_sym("su")
+    u = utils.scalar_sym("u")
+    v = utils.pseudo_sym("v.0")
+    b = utils.line_sym(e="be", v="bv")
+    right = (v * cu + su) * utils.inverse(u+v) * b
+    exp = cu-v*su + right
+    print(exp)
+
+    return
     b = utils.line_sym(e="self.e_bivector")
     sdbb = utils.scalar_sym("sdbb")
     csdbb = utils.scalar_sym("csdbb")
@@ -66,6 +76,15 @@ def log_4cs():
     bi = wmeetwrev * (1 / (2 * sqrt[0]))
     print((a+bi)*l)
     return
+
+
+def log_gunn():
+    u = utils.scalar_sym("u")
+    v = utils.pseudo_sym("v")
+    s = utils.scalar_sym("s2")
+    p = utils.pseudo_sym("p2.0")
+    b = utils.line_sym(e="be", v="bv")
+    print((u+v)*b*utils.inverse(s+p))
 
 
 if __name__ == "__main__":

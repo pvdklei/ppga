@@ -75,6 +75,12 @@ impl Motor {
         }
     }
 
+    /// Check whether the motor has no grade 4 part, and therefore
+    /// called 'simple'. E.g., rotation that is not around the origin.
+    pub fn is_simple(&self) -> bool {
+        self.pseudo.abs() < 0.001
+    }
+
     pub fn sqrt(&self) -> Self {
         let s = self.scalar;
         let ps = self.pseudo;
@@ -112,7 +118,7 @@ impl Motor {
     }
 
     /// PGA4CS page 69
-    pub fn ln(&self) -> super::Line {
+    pub fn ln_4cs(&self) -> super::Line {
         let w = super::Line::from(self).div_scalar(self.scalar);
         let wrev = w.reverse();
         let wdotwrev = super::inner::lines(&w, &wrev);
@@ -120,10 +126,10 @@ impl Motor {
         let sqrt_wdotwrev = wdotwrev.sqrt();
         let a = sqrt_wdotwrev.atan();
 
-        // println!("Dot {:?}", wdotwrev);
-        // println!("SqrtDot {:?}", sqrt_wdotwrev);
-        // println!("Meet {:?}", wmeetwrev);
-        // println!("Alpha {:?}", a);
+        println!("Dot {:?}", wdotwrev);
+        println!("SqrtDot {:?}", sqrt_wdotwrev);
+        println!("Meet {:?}", wmeetwrev);
+        println!("Alpha {:?}", a);
 
         let we = w.e_bivector;
         let wv = w.v_bivector;
@@ -143,6 +149,41 @@ impl Motor {
                 a * wv[2] / sqrt_wdotwrev
                     + 0.5 * a * we[2] * wmeetwrev.0 / (sqrt_wdotwrev * wdotwrev)
                     - 0.5 * we[2] * wmeetwrev.0 / wdotwrev,
+            ],
+        }
+    }
+
+    /// SIGGRAPH Course Notes 8.1.6.
+    pub fn ln(&self) -> super::Line {
+        let s1 = self.scalar;
+        let p1 = self.pseudo;
+        let b = super::Line::from(self);
+        let bdb = -super::inner::lines(&b, &b);
+        // When self is a translator nothing has to be done
+        if bdb.abs() < 0.001 {
+            return super::Line::from(self);
+        }
+        let s2 = bdb.sqrt();
+        let p2 = super::meet::lines(&b, &b).mul_scalar(-2. * s2);
+
+        let (u, v) = if s1.abs() > 0.001 {
+            let u = s2.atan2(s1);
+            let v = p2.div_scalar(s1);
+            (u, v)
+        } else {
+            let u = (-p1).atan2(p2.0);
+            let v = super::PseudoScalar(-p1 / s2);
+            (u, v)
+        };
+        let be = b.e_bivector;
+        let bv = b.v_bivector;
+        let s2sq = s2 * s2;
+        super::Line {
+            e_bivector: [be[0] * u / s2, be[1] * u / s2, be[2] * u / s2],
+            v_bivector: [
+                -be[0] * p2.0 * u / s2sq - be[0] * v.0 / s2 + bv[0] * u / s2,
+                -be[1] * p2.0 * u / s2sq - be[1] * v.0 / s2 + bv[1] * u / s2,
+                -be[2] * p2.0 * u / s2sq - be[2] * v.0 / s2 + bv[2] * u / s2,
             ],
         }
     }
@@ -520,12 +561,15 @@ mod tests {
         let p4 = Plane::new(20., &na::Vector3::new_random().normalize().into());
         let p5 = Plane::random().nnormalize();
         let m = p1.move_to(&p2).mul(&p3.move_to(&p4)).mul(&p3.move_to(&p5));
-        m.squared()
+        m
     }
-    fn tm() -> super::Motor {
-        let p1 = Plane::new(1., &[1., 0., 0.]);
-        let p2 = Plane::new(6., &na::Vec3::new(0., 0., 1.).into());
-        let p3 = Plane::new(-4., &na::Vec3::new(0., 1., 0.).into());
+    fn test_motor2() -> super::Motor {
+        // let p1 = Plane::new(1., &na::Vec3::new(1., 5., -1.2).normalize().into());
+        // let p2 = Plane::new(6., &na::Vec3::new(0., 1., -1.).normalize().into());
+        // let p3 = Plane::new(-4., &na::Vec3::new(1., 41., 0.).normalize().into());
+        let p1 = Plane::new(1., &na::Vec3::new_random().normalize().into());
+        let p2 = Plane::new(6., &na::Vec3::new_random().normalize().into());
+        let p3 = Plane::new(-4., &na::Vec3::new_random().normalize().into());
         p1.move_to(&p2).mul(&p2.move_to(&p3))
     }
     #[allow(dead_code)]
@@ -533,8 +577,8 @@ mod tests {
         let p1 = Point::new(&[0., 0., 0.]);
         let p2 = Point::new(&[-6.4, 9.1, 0.4]);
         let p3 = Point::new(&[0.0, -10., 3.]);
-        let l1 = join::points(&p1, &p2);
-        let l2 = join::points(&p1, &p3);
+        let l1 = join::points(&p1, &p2).normalize();
+        let l2 = join::points(&p1, &p3).normalize();
         l1.div(&l2).sqrt()
     }
     #[allow(dead_code)]
@@ -548,22 +592,43 @@ mod tests {
     fn sqrt1() {
         // Taking the square root and then squaring
         // should leave it unchanged
-        let m = test_motor().normalize();
+        let m = test_motor();
         let m_ = m.sqrt().squared();
         assert_eq!(m, m_);
         assert!(m.is_similar_to(&m_));
     }
     #[test]
     fn sqrt2() {
-        // Taking the square root and then squaring
-        // should leave it unchanged
-        let m = Motor::random().normalize();
-        let m_ = m.ssqrt().squared();
+        let m = test_motor2();
+        let m_ = m.sqrt().squared();
         assert_eq!(m, m_);
         assert!(m.is_similar_to(&m_));
     }
     #[test]
     fn sqrt3() {
+        let m = rotating_test_motor();
+        let m_ = m.sqrt().squared();
+        assert_eq!(m, m_);
+        assert!(m.is_similar_to(&m_));
+        let m = translating_test_motor();
+        let m_ = m.sqrt().squared();
+        assert_eq!(m, m_);
+        assert!(m.is_similar_to(&m_));
+    }
+    #[test]
+    fn sqrt4() {
+        // For a translator and rotor the simple sqrt can be used.
+        let m = rotating_test_motor();
+        let m_ = m.ssqrt().squared();
+        assert_eq!(m, m_);
+        assert!(m.is_similar_to(&m_));
+        let m = translating_test_motor();
+        let m_ = m.ssqrt().squared();
+        assert_eq!(m, m_);
+        assert!(m.is_similar_to(&m_));
+    }
+    #[test]
+    fn sqrt5() {
         // Taking the square root should only perform half the transformation.
         // so a full turn becomes a half turn. Twice the square root should do
         // a quarter of the rotation, etc
@@ -597,29 +662,35 @@ mod tests {
 
     #[test]
     fn logarithm1() {
-        let m = tm().normalize();
+        let m = test_motor2();
         let m_ = m.ln().exp();
         println!("{:?}", m);
         println!("{:?}", m_);
-        println!("{:?}", m_.ln().exp());
         // assert_eq!(m, m_);
         let p = Point::new(&[2., 3., 4.]);
         println!("{:?}", p);
         println!("{:?}", m.apply_to_point(&p));
         println!("{:?}", m_.apply_to_point(&p));
-        println!("{:?}", m_.ln().exp().apply_to_point(&p));
-
         assert!(m.is_similar_to(&m_));
     }
     #[test]
     fn logarithm2() {
-        let l = Line {
-            v_bivector: [2., -3., 1.],
-            e_bivector: [-4., 9., 5.5],
-        }
-        .normalize();
+        let l = join::points(&Point::random(), &Point::random());
         let l_ = l.exp().ln();
+        println!("{:?}", l.exp());
+        println!("{:?}", l_.exp());
         assert_eq!(l, l_);
+    }
+
+    #[test]
+    fn logrithm3() {
+        let m = rotating_test_motor();
+        assert_eq!(m, m.ln().exp());
+    }
+    #[test]
+    fn logrithm4() {
+        let m = translating_test_motor();
+        assert_eq!(m, m.ln().exp());
     }
 
     #[test]

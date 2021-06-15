@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Line {
     pub e_bivector: [f32; 3],
     pub v_bivector: [f32; 3],
@@ -72,9 +72,19 @@ impl Line {
         }
     }
 
-    // PGA4CS chapter 5.6 and 7
-    pub fn exp(&self) -> super::Motor {
+    pub fn is_zero(&self) -> bool {
+        na::Vec3::from(self.e_bivector).is_empty() && na::Vec3::from(self.v_bivector).is_empty()
+    }
+
+    /// PGA4CS chapter 5.6 and 7
+    /// Has some numerical stability issues, don't know why.
+    /// Also no exceptions handled, f.i. when e == 0
+    /// (vanishing line / translation).
+    pub fn exp_unstable(&self) -> super::Motor {
         let (e, v) = self.decompose();
+        if e.is_zero() {
+            return super::Motor::from(self).add_scalar(1.);
+        }
         let half_phi = -e.norm();
         let e_hat = e.normalize();
         let cos_half_phi = half_phi.cos();
@@ -105,6 +115,32 @@ impl Line {
                 -eucl_e[1] * sin_half_phi,
                 -eucl_e[2] * sin_half_phi,
             ],
+        }
+    }
+
+    /// SIGGRAPH Course Notes 8.1.3 & 8.1.4.
+    /// Implementation taken from ganja.js. More stable.
+    pub fn exp(&self) -> super::Motor {
+        let bdb = -super::inner::lines(&self, &self);
+        let u = bdb.sqrt();
+        if u < 0.001 {
+            return super::Motor::from(self).add_scalar(1.);
+        }
+        let v = super::meet::lines(&self, &self).mul_scalar(-2. * u);
+        let cu = u.cos();
+        let su = u.sin();
+        let be = self.e_bivector;
+        let bv = self.v_bivector;
+        let u2 = u * u;
+        super::Motor {
+            scalar: cu,
+            pseudo: -su * v.0,
+            v_bivector: [
+                -be[0] * cu * v.0 / u - be[0] * su * v.0 / u2 + bv[0] * su / u,
+                -be[1] * cu * v.0 / u - be[1] * su * v.0 / u2 + bv[1] * su / u,
+                -be[2] * cu * v.0 / u - be[2] * su * v.0 / u2 + bv[2] * su / u,
+            ],
+            e_bivector: [be[0] * su / u, be[1] * su / u, be[2] * su / u],
         }
     }
 
@@ -195,7 +231,7 @@ impl Line {
     }
 
     pub fn move_to(&self, dest: &Self) -> super::Motor {
-        dest.div(&self).sqrt()
+        dest.div(&self).ssqrt()
     }
 }
 
@@ -205,6 +241,12 @@ impl From<&super::Motor> for Line {
             e_bivector: m.e_bivector,
             v_bivector: m.v_bivector,
         }
+    }
+}
+
+impl PartialEq for Line {
+    fn eq(&self, other: &Line) -> bool {
+        self.exp() == other.exp()
     }
 }
 
@@ -263,6 +305,11 @@ mod tests {
         let l3 = Line::random().mul_scalar(-3.).normalize();
         let m1 = l1.move_to(&l2);
         let m2 = l2.move_to(&l3);
+        let p = Point::random();
+        let r1 = l2.exp();
+        let r2 = m1.apply_to_line(&l1).exp();
+        println!("{:?}", r1);
+        println!("{:?}", r2);
         assert_eq!(l2, m1.apply_to_line(&l1));
         assert_eq!(l3, m2.apply_to_line(&l2));
     }
@@ -307,7 +354,10 @@ mod tests {
             e_bivector: [0., 1., 0.],
         };
         let angle = std::f32::consts::PI;
-        let v = l.mul_scalar(-angle * 0.5).add(&t.mul_scalar(0.5)).exp();
+        let v = t
+            .mul_scalar(0.5)
+            .exp()
+            .mul(&l.mul_scalar(-angle * 0.5).exp());
         let p = Point::new(&[1., 0., 0.]);
         assert_eq!(Point::new(&[-1., 1., 1.]), v.apply_to_point(&p));
     }
