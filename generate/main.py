@@ -1,25 +1,12 @@
 import utils
-import motor
-import numpy as np
 import sympy
 
 
 def main():
-    log_gunn()
-
-    return
-    l1 = utils.point(3, -2, 7) & utils.point(7, 1, -1)
-    l1 = l1.normalized()
-    l2 = utils.point(7, 4, 2) & utils.point(8, -3, -6)
-    l2 = l2.normalized()
-    m = utils.move_to(l1, l2)
-    print(l2)
-    print(utils.apply(m, l1))
-    return
-
     m = utils.motor_sym()
-    l = utils.line_sym()
-    print(utils.apply(m, l))
+    print(utils.inverse(m))
+    # cayley_ln()
+
 
 
 def bivec_decomp():
@@ -30,6 +17,11 @@ def bivec_decomp():
     van = 0.5 * b * bmb * (1 / bdb[0])
     print(eucl)
     print(van)
+
+def cayley_ln():
+    m = utils.motor_sym()
+    log = (m - 1) * utils.inverse(m + 1)
+    print(log)
 
 
 def exp_4cs():

@@ -118,6 +118,12 @@ impl Line {
         }
     }
 
+    /// Just like the exponent, maps to a motor space and back (inverse).
+    pub fn cayley(&self) -> super::Motor {
+        let x = super::Motor::from(self);
+        x.neg().add_scalar(1.0).inverse().mul(&x.add_scalar(1.0))
+    }
+
     /// SIGGRAPH Course Notes 8.1.3 & 8.1.4.
     /// Implementation taken from ganja.js. More stable.
     pub fn exp(&self) -> super::Motor {

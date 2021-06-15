@@ -51,12 +51,27 @@ impl Motor {
         }
     }
 
+    pub fn neg(&self) -> Self {
+        Self {
+            scalar: -self.scalar,
+            pseudo: -self.pseudo,
+            v_bivector: (-na::Vec3::from(self.v_bivector)).into(),
+            e_bivector: (-na::Vec3::from(self.e_bivector)).into(),
+        }
+    }
+
     pub fn norm(&self) -> f32 {
         (self.e_bivector[0] * self.e_bivector[0]
             + self.e_bivector[1] * self.e_bivector[1]
             + self.e_bivector[2] * self.e_bivector[2]
             + self.scalar * self.scalar)
             .sqrt()
+    }
+    pub fn norm_squared(&self) -> f32 {
+        self.e_bivector[0] * self.e_bivector[0]
+            + self.e_bivector[1] * self.e_bivector[1]
+            + self.e_bivector[2] * self.e_bivector[2]
+            + self.scalar * self.scalar
     }
 
     pub fn normalize(&self) -> Self {
@@ -188,6 +203,11 @@ impl Motor {
         }
     }
 
+    /// Just like a log, maps a motor to a bivector and can be reversed.
+    pub fn cayley(&self) -> super::Line {
+        super::Line::from(&self.neg().add_scalar(1.0).div(&self.add_scalar(1.0)))
+    }
+
     pub fn mul(&self, other: &Self) -> Self {
         let s1 = self.scalar;
         let s2 = other.scalar;
@@ -228,6 +248,10 @@ impl Motor {
                 -e1[0] * e2[1] + e1[1] * e2[0] + e1[2] * s2 + e2[2] * s1,
             ],
         }
+    }
+
+    pub fn div(&self, other: &Self) -> Self {
+        self.mul(&other.inverse())
     }
 
     pub fn mul_translator(&self, t: &super::Translator) -> Self {
@@ -435,6 +459,10 @@ impl Motor {
         }
     }
 
+    pub fn inverse(&self) -> Self {
+        self.reverse().div_scalar(self.norm_squared())
+    }
+
     pub fn mul_scalar(&self, s: f32) -> Self {
         Self {
             scalar: self.scalar * s,
@@ -442,6 +470,9 @@ impl Motor {
             e_bivector: (na::Vector3::from(self.e_bivector) * s).into(),
             v_bivector: (na::Vector3::from(self.v_bivector) * s).into(),
         }
+    }
+    pub fn div_scalar(&self, s: f32) -> Self {
+        self.mul_scalar(1. / s)
     }
     pub fn into_klein(&self) -> [[f32; 4]; 2] {
         let m = self;
@@ -691,6 +722,12 @@ mod tests {
     fn logrithm4() {
         let m = translating_test_motor();
         assert_eq!(m, m.ln().exp());
+    }
+
+    #[test]
+    fn cayley() {
+        let m = test_motor();
+        assert_eq!(m, m.cayley().cayley())
     }
 
     #[test]
