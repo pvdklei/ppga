@@ -155,7 +155,7 @@ impl Line {
                 .into(),
             v_bivector: self.v_bivector,
             e_bivector: self.e_bivector,
-        }
+        }.normalize()
     }
 
     /// SIGGRAPH Course Notes 8.1.3 & 8.1.4.
@@ -166,7 +166,7 @@ impl Line {
         if u < 0.001 {
             return super::Motor::from(self).add_scalar(1.);
         }
-        let v = super::meet::lines(&self, &self).mul_scalar(-2. * u);
+        let v = super::meet::lines(&self, &self).div_scalar(-2. * u);
         let cu = u.cos();
         let su = u.sin();
         let be = self.e_bivector;
@@ -272,6 +272,17 @@ impl Line {
 
     pub fn move_to(&self, dest: &Self) -> super::Motor {
         dest.div(&self).ssqrt()
+    }
+}
+
+impl From<Line> for [[f32; 3]; 2] {
+    fn from(l: Line) -> Self {
+        [l.e_bivector, l.v_bivector]
+    }
+}
+impl From<&Line> for [[f32; 3]; 2] {
+    fn from(l: &Line) -> Self {
+        [l.e_bivector, l.v_bivector]
     }
 }
 

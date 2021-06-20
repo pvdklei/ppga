@@ -17,7 +17,6 @@ impl Rotor {
     /// Creates a rotor out of a base transformation (e.g., matrix columns).
     /// Note that the base vectors must be normalized and orthogonal to each other.
     /// If not, this method will not panic, but returns an invalid rotor.
-    /// In debug mode a warning is printed if so.
     pub fn from_base(e1: &[f32; 3], e2: &[f32; 3], e3: &[f32; 3]) -> Self {
         let e1_ = super::Point::new(e1);
         let e2_ = super::Point::new(e2);
@@ -31,9 +30,8 @@ impl Rotor {
         //let to = super::join::three_points(&e1_, &e2_, &e3_);
         //let r = to.div(&from).sqrt().into_rotor_unchecked();
 
-        let r = super::Motor::from_point_correspondences(&e1, &e1_, &e2, &e2_, &e3, &e3_)
-            .into_rotor_unchecked();
-
+        let m = super::Motor::from_point_correspondences(&e1, &e1_, &e2, &e2_, &e3, &e3_);
+        let r = m.into_rotor_unchecked();
         r
     }
 
@@ -127,5 +125,32 @@ mod tests {
         let p = Point::new(&[3., 4., 5.]);
         let rot = Rotor::new(2. * std::f32::consts::PI, &[4., -3., 1.3]);
         assert_eq!(rot.apply_to_point(&p), p);
+    }
+
+    #[test]
+    fn base() {
+        let r = Rotor::from_base(&[0., 1., 0.], &[1., 0., 0.], &[0., 0., 1.]);
+        let p = Point::random();
+        println!("{:?}", r);
+        println!("{:?}", p.eucl());
+        let p_ = r.apply_to_point(&p);
+        let mut p = p.eucl();
+        p.swap(0, 1);
+        assert_eq!(p, p_.eucl())
+    }
+
+    #[test]
+    fn for_steven() {
+        let r = Rotor::from_base(&[-0.95, 0.0, 0.31], &[0.0, 1.0, 0.0], &[-0.31, 0.0, -0.95])
+            .normalize();
+        let pos = [0.7, 3.0, -2.6];
+        let t = Translator::new(&pos);
+        let m = t.mul_rotor(&r);
+
+        let m_ = m.ln().exp();
+        let p = Point::random();
+        println!("True Point After Motor {:?}", m.apply_to(&p));
+        println!("Point After Log Motor {:?}", m_.apply_to(&p));
+        assert_eq!(m, m_);
     }
 }

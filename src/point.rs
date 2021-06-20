@@ -20,6 +20,12 @@ impl Point {
         }
     }
 
+    pub fn origin() -> Self {
+        Self {
+            trivector: [1.0, 0.0, 0.0, 0.0]
+        }
+    }
+
     pub fn x() -> Self {
         Self::new(&[1., 0., 0.])
     }
@@ -30,7 +36,7 @@ impl Point {
         Self::new(&[0., 0., 1.])
     }
 
-    pub fn r3(&self) -> [f32; 3] {
+    pub fn eucl(&self) -> [f32; 3] {
         [-self.trivector[1], -self.trivector[2], -self.trivector[3]]
     }
 

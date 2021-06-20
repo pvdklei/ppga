@@ -1,6 +1,6 @@
 use crate::error;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Motor {
     pub scalar: f32,
     pub v_bivector: [f32; 3],
@@ -28,13 +28,19 @@ impl Motor {
         let from = super::join::points(&a_, &b_a);
         let to = super::join::points(&a_, &b_);
 
-        let v_ba = to.div(&from).sqrt().mul_translator(&v_a);
+        let v_ba = to
+            .div(&from)
+            // .make_scalar_positive()
+            .sqrt()
+            .mul_translator(&v_a);
         let c_ba = v_ba.apply_to_point(&c);
 
         let from = super::join::three_points(&a_, &b_, &c_ba);
         let to = super::join::three_points(&a_, &b_, &c_);
 
-        to.div(&from).sqrt().mul(&v_ba)
+        let v = to.div(&from).sqrt().mul(&v_ba);
+
+        v
     }
 
     pub fn into_rotor_checked(&self) -> Result<super::Rotor, error::CastError<Self>> {
@@ -57,6 +63,14 @@ impl Motor {
             pseudo: -self.pseudo,
             v_bivector: (-na::Vec3::from(self.v_bivector)).into(),
             e_bivector: (-na::Vec3::from(self.e_bivector)).into(),
+        }
+    }
+
+    pub fn make_scalar_positive(&self) -> Self {
+        if self.scalar.is_sign_negative() {
+            self.neg()
+        } else {
+            *self
         }
     }
 
@@ -97,6 +111,12 @@ impl Motor {
     }
 
     pub fn sqrt(&self) -> Self {
+        // let (slf, negated) = if self.scalar.is_sign_negative() {
+        //     (self.neg(), true)
+        // } else {
+        //     (*self, false)
+        // };
+        // // let slf = self;
         let s = self.scalar;
         let ps = self.pseudo;
         let e = self.e_bivector;
@@ -129,6 +149,7 @@ impl Motor {
 
     /// Square root for a simple motor (no grade 4 part)
     pub fn ssqrt(&self) -> Self {
+        self.make_scalar_positive();
         self.add_scalar(1.).normalize()
     }
 
@@ -688,7 +709,6 @@ mod tests {
         let a = Point::new(&[2., 3., 5.]);
         let b = Point::new(&[2., 8., 7.]);
         let c = Point::new(&[3., -2., 1.]);
-
         let rot = Rotor::new(2.6, &na::Vector3::from([1.2, 1., 0.]).normalize().into());
         let trans = Point::new(&[6., 4., 1.])
             .div(&Point::new(&[2., 0., 9.]))
@@ -769,5 +789,13 @@ mod tests {
         println!("{:?}", m);
         println!("{:?}", m_);
         assert!(m.is_similar_to(0.01, &m_));
+    }
+
+    #[test]
+    fn does_same_as_neg() {
+        let m = test_motor();
+        println!("{:?}", m);
+        println!("{:?}", m.neg());
+        assert!(m.is_similar_to(0.001, &m.neg()));
     }
 }

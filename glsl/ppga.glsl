@@ -46,4 +46,34 @@ vec3 ppga_apply_motor_to_origin(ppga_motor m) {
     return 2.0 * res;
 }
 
+// Not tested yet
+ppga_motor ppga_exp(vec3 eucl, vec3 vanish) {
+    float bdb = dot(eucl, eucl);
+    if (bdb < 0.01)
+        return ppga_motor(vec4(1, eucl), vec4(0, vanish));
+    float u = sqrt(bdb);
+    float v = -dot(eucl, vanish); // meet operation
+    float cu = cos(u);
+    float su = sin(u);
+    float uinv = 1 / u;
+    float suu = su * uinv;
+    float cuvu = -cu * v * uinv;
+    float suvu2 = -su * v / bdb;
+
+    return ppga_motor(vec4(cu,
+                           eucl.x * cuvu + eucl.x * suvu2 + vanish.x * suu,
+                           eucl.y * cuvu + eucl.y * suvu2 + vanish.y * suu,
+                           eucl.z * cuvu + eucl.z * suvu2 + vanish.z * suu),
+                      vec4(-su * v,
+                           eucl.x * suu,
+                           eucl.y * suu,
+                           eucl.z * suu));
+}
+
+ppga_motor ppga_outer_exp(vec3 eucl, vec3 vanish) {
+    vec4 p1 = vec4(1.0, eucl);
+    float normalizer = 1 / length(p1);
+    return ppga_motor(p1 * normalizer, 
+                      vec4(dot(vanish, eucl), vanish) * normalizer);
+}
 #endif

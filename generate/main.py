@@ -4,6 +4,7 @@ import ganja
 
 
 def main():
+    # bivec_decomp()
     outer_exp()
 
 
@@ -15,17 +16,21 @@ def bivec_decomp():
     van = 0.5 * b * bmb * (1 / bdb[0])
     print(eucl)
     print(van)
+    return eucl, van
 
 
-def outer_exp():
-    a = utils.e_bivec_sym("a")
-    b = utils.v_bivec_sym("b")
-    s = a+b
-    sds = utils.pseudo_sym("sds") # in fact 0.5 s ^ s
-    sds = 0.5 * (s ^ s)
-    exp = (1 + s + sds) * (1 / (1 - sds[0])) # euclidian part assumed normalized
+def outer_exp(s=None):
+    if s is None:
+        a = utils.e_bivec_sym("a")
+        b = utils.v_bivec_sym("b")
+        s = a+b
+        sds = utils.pseudo_sym("sds") # in fact 0.5 s ^ s
+    else:
+        sds = 0.5 * (s ^ s)
+    exp = (1 + s + sds) * ((1 - sds[-1])) # euclidian part assumed normalized
                                    # so inverse == reverse
     print(exp)
+    return exp
 
 
 def exp_4cs():
