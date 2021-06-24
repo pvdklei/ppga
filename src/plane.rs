@@ -16,6 +16,15 @@ impl Plane {
         let n = na::Vec3::new_random().normalize().into();
         Self::new(rand::random(), &n)
     }
+    pub fn yz() -> Self {
+        Self::new(0.0, &[1., 0., 0.])
+    }
+    pub fn zx() -> Self {
+        Self::new(0.0, &[0., 1., 0.])
+    }
+    pub fn xy() -> Self {
+        Self::new(0.0, &[0., 0., 1.])
+    }
 
     pub fn dual(&self) -> super::Point {
         super::Point {

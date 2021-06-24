@@ -9,6 +9,28 @@ pub struct Motor {
 }
 
 impl Motor {
+    pub fn one() -> Self {
+        Self {
+            scalar: 1.0,
+            ..Self::zero()
+        }
+    }
+    pub fn zero() -> Self {
+        Self {
+            scalar: 0.0,
+            pseudo: 0.0,
+            v_bivector: [0.0; 3],
+            e_bivector: [0.0; 3],
+        }
+    }
+    // Not finsished yet. Hard because I think I need some general multivector for this.
+    pub fn align<T: Alignable>(g: &[(T, T)]) -> Self {
+        let mut m = Self::one();
+        let mut q = Self::one();
+        let mut p = Self::one();
+        for (a, b) in g.iter() {}
+        unimplemented!()
+    }
     /// Creates a motor that moves every param (e.g., a) to its destination (e.g., a_).
     /// If this transformation cannot be represented by a motor (i.e., is not orthogonal),
     /// then a invalid (possibly filled with NaN or Inf values) motor is returned.
@@ -27,19 +49,42 @@ impl Motor {
 
         let from = super::join::points(&a_, &b_a);
         let to = super::join::points(&a_, &b_);
-
         let v_ba = to
             .div(&from)
             // .make_scalar_positive()
-            .sqrt()
+            .ssqrt()
             .mul_translator(&v_a);
         let c_ba = v_ba.apply_to_point(&c);
 
         let from = super::join::three_points(&a_, &b_, &c_ba);
         let to = super::join::three_points(&a_, &b_, &c_);
+        let v = to.div(&from).ssqrt().mul(&v_ba);
+        v
+    }
+    pub fn from_plane_correspondences(
+        a: &super::Plane,
+        a_: &super::Plane,
+        b: &super::Plane,
+        b_: &super::Plane,
+        c: &super::Plane,
+        c_: &super::Plane,
+    ) -> Self {
+        let v_a = a_.div(&a).ssqrt();
+        let b_a = v_a.apply_to(b);
 
-        let v = to.div(&from).sqrt().mul(&v_ba);
+        let from = super::meet::planes(&a_, &b_a);
+        let to = super::meet::planes(&a_, &b_);
+        let v_ba = to
+            .normalize()
+            .div(&from.normalize())
+            // .make_scalar_positive()
+            .ssqrt()
+            .mul(&v_a);
+        let c_ba = v_ba.apply_to_plane(&c);
 
+        let from = super::meet::three_planes(&a_, &b_, &c_ba);
+        let to = super::meet::three_planes(&a_, &b_, &c_);
+        let v = Motor::from(&to.normalize().div(&from.normalize()).ssqrt()).mul(&v_ba);
         v
     }
 
@@ -149,7 +194,6 @@ impl Motor {
 
     /// Square root for a simple motor (no grade 4 part)
     pub fn ssqrt(&self) -> Self {
-        self.make_scalar_positive();
         self.add_scalar(1.).normalize()
     }
 
@@ -611,6 +655,26 @@ impl Applicable for super::Line {
 impl Applicable for super::Plane {
     fn apply(&self, m: &Motor) -> Self {
         m.apply_to_plane(self)
+    }
+}
+
+pub trait Alignable: Applicable {
+    fn align(&self, other: &Self) -> Motor;
+}
+
+impl Alignable for super::Plane {
+    fn align(&self, other: &Self) -> Motor {
+        self.move_to(other)
+    }
+}
+impl Alignable for super::Line {
+    fn align(&self, other: &Self) -> Motor {
+        self.move_to(other)
+    }
+}
+impl Alignable for super::Point {
+    fn align(&self, other: &Self) -> Motor {
+        Motor::from(&self.move_to(other))
     }
 }
 

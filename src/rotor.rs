@@ -14,23 +14,36 @@ impl Rotor {
         }
     }
 
+    pub fn random() -> Self {
+        Self::new(
+            rand::random::<f32>() * std::f32::consts::PI * 2.0,
+            &na::Vec3::new_random().into(),
+        )
+    }
+
     /// Creates a rotor out of a base transformation (e.g., matrix columns).
     /// Note that the base vectors must be normalized and orthogonal to each other.
     /// If not, this method will not panic, but returns an invalid rotor.
     pub fn from_base(e1: &[f32; 3], e2: &[f32; 3], e3: &[f32; 3]) -> Self {
-        let e1_ = super::Point::new(e1);
-        let e2_ = super::Point::new(e2);
-        let e3_ = super::Point::new(e3);
-        let e1 = super::Point::x();
-        let e2 = super::Point::y();
-        let e3 = super::Point::z();
+        // let e1_ = super::Point::new(e1);
+        // let e2_ = super::Point::new(e2);
+        // let e3_ = super::Point::new(e3);
+        // let e1 = super::Point::x();
+        // let e2 = super::Point::y();
+        // let e3 = super::Point::z();
+        let e1_ = super::Plane::new(0.0, e1).normalize();
+        let e2_ = super::Plane::new(0.0, e2).normalize();
+        let e3_ = super::Plane::new(0.0, e3).normalize();
+        let e1 = super::Plane::yz().normalize();
+        let e2 = super::Plane::zx().normalize();
+        let e3 = super::Plane::xy().normalize();
 
         // TODO: Make something simpler than three point corrs, like two line corrs
         //let from = super::join::three_points(&e1, &e2, &e3);
         //let to = super::join::three_points(&e1_, &e2_, &e3_);
         //let r = to.div(&from).sqrt().into_rotor_unchecked();
 
-        let m = super::Motor::from_point_correspondences(&e1, &e1_, &e2, &e2_, &e3, &e3_);
+        let m = super::Motor::from_plane_correspondences(&e1, &e1_, &e2, &e2_, &e3, &e3_);
         let r = m.into_rotor_unchecked();
         r
     }
@@ -61,6 +74,44 @@ impl Rotor {
         Self {
             scalar: 0.5 * (2. * s + 2.).sqrt(),
             e_bivector: [e[0] * fac, e[1] * fac, e[2] * fac],
+        }
+    }
+
+    pub fn neg(&self) -> Self {
+        Self {
+            scalar: -self.scalar,
+            e_bivector: (-na::Vec3::from(self.e_bivector)).into(),
+        }
+    }
+
+    // Course notes chapter 8
+    pub fn ln(&self) -> super::Line {
+        let e = na::Vec3::from(self.e_bivector);
+        let s2 = e.norm_squared().sqrt();
+        let u = s2.atan2(self.scalar);
+        super::Line {
+            v_bivector: [0.0; 3],
+            e_bivector: (e * u / s2).into(),
+        }
+    }
+    pub fn outer_ln(&self) -> super::Line {
+        super::Line {
+            e_bivector: (na::Vec3::from(self.e_bivector) / self.scalar).into(),
+            v_bivector: [0.; 3],
+        }
+    }
+    pub fn qtangent_ln(&self) -> [f32; 3] {
+        if self.scalar.is_sign_negative() {
+            (-na::Vec3::from(self.e_bivector)).into()
+        } else {
+            self.e_bivector
+        }
+    }
+    pub fn qtangent_exp(q: &[f32; 3]) -> Self {
+        let q = na::Vec3::from(*q);
+        Self {
+            e_bivector: q.into(),
+            scalar: (1. - q.dot(&q)).sqrt(),
         }
     }
 
@@ -117,6 +168,17 @@ impl From<Rotor> for [f32; 4] {
     }
 }
 
+impl PartialEq for Rotor {
+    fn eq(&self, other: &Self) -> bool {
+        (self.scalar - other.scalar).abs() < 0.03
+            && self
+                .e_bivector
+                .iter()
+                .zip(other.e_bivector.iter())
+                .all(|(a, b)| (a - b).abs() < 0.3)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -145,12 +207,41 @@ mod tests {
             .normalize();
         let pos = [0.7, 3.0, -2.6];
         let t = Translator::new(&pos);
-        let m = t.mul_rotor(&r);
+        let m = t.mul_rotor(&r).normalize();
 
-        let m_ = m.ln().exp();
+        let m_ = m.ln().exp().normalize();
+        println!("{:?}", m);
+        println!("{:?}", m.ln());
+        println!("{:?}", m_);
         let p = Point::random();
         println!("True Point After Motor {:?}", m.apply_to(&p));
         println!("Point After Log Motor {:?}", m_.apply_to(&p));
         assert_eq!(m, m_);
+    }
+
+    #[test]
+    fn ln() {
+        let r = Rotor::random().normalize();
+        let m = Motor::from(&r);
+        let m_ = r.ln().exp();
+        println!("{:?}", m);
+        println!("{:?}", m_);
+        assert!(m.is_similar_to(0.01, &m_));
+    }
+    #[test]
+    fn outer_ln() {
+        let r = Rotor::random().normalize();
+        let m = Motor::from(&r);
+        let m_ = r.outer_ln().outer_exp();
+        println!("{:?}", m);
+        println!("{:?}", m_);
+        assert!(m.is_similar_to(0.01, &m_));
+    }
+
+    #[test]
+    fn qtangent() {
+        let r = Rotor::random().normalize();
+        let r_ = Rotor::qtangent_exp(&r.qtangent_ln());
+        assert!(r == r_ || r == r_.neg());
     }
 }

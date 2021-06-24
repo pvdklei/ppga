@@ -20,6 +20,10 @@ pub fn planes(p1: &super::Plane, p2: &super::Plane) -> super::Line {
     }
 }
 
+pub fn three_planes(p1: &super::Plane, p2: &super::Plane, p3: &super::Plane) -> super::Point {
+    plane_with_line(p1, &planes(p2, p3))
+}
+
 /// p ^ L = L ^ p
 ///       = (b0e01 + b1e02 + b2e03 + b3e23 + b4e31 + b5e12)
 ///         ^ (v0e0 + v1e1 + v2e2 + v3e3)

@@ -46,7 +46,7 @@ vec3 ppga_apply_motor_to_origin(ppga_motor m) {
     return 2.0 * res;
 }
 
-// Not tested yet
+// Not properly tested yet
 ppga_motor ppga_exp(vec3 eucl, vec3 vanish) {
     float bdb = dot(eucl, eucl);
     if (bdb < 0.01)
@@ -70,10 +70,30 @@ ppga_motor ppga_exp(vec3 eucl, vec3 vanish) {
                            eucl.z * suu));
 }
 
+ppga_motor ppga_cayley_exp(vec3 eucl, vec3 vanish) {
+    return ppga_motor(vec4(0.5 - 0.5 * dot(eucl, eucl), -eucl),
+                      vec4(dot(eucl, vanish), -vanish));
+}
+
+ppga_rotor ppga_cayley_exp(vec3 eucl) {
+    return ppga_rotor(vec4(0.5 - 0.5 * dot(eucl, eucl), -eucl));
+}
+
 ppga_motor ppga_outer_exp(vec3 eucl, vec3 vanish) {
     vec4 p1 = vec4(1.0, eucl);
     float normalizer = 1 / length(p1);
     return ppga_motor(p1 * normalizer, 
                       vec4(dot(vanish, eucl), vanish) * normalizer);
+}
+
+ppga_rotor ppga_outer_exp(vec3 eucl) {
+    vec4 p1 = vec4(1.0, eucl);
+    float normalizer = 1 / length(p1);
+    return ppga_rotor(p1 * normalizer);
+}
+
+ppga_rotor ppga_qtangent_exp(vec3 eucl) {
+    float w = sqrt(1 - dot(eucl, eucl)); 
+    return ppga_rotor(vec4(w, eucl));
 }
 #endif

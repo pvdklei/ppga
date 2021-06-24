@@ -5,8 +5,20 @@ import ganja
 
 def main():
     # bivec_decomp()
-    outer_exp()
+    # outer_exp()
+    # log_gunn()
+    cayley_log()
+    cayley_exp()
 
+def cayley_exp():
+    b = utils.line_sym()
+    c = (1+b)*utils.inverse(1-b)
+    print(~c)
+
+def cayley_log():
+    b = utils.rotor_sym()
+    c = (1-b)*utils.inverse(1+b)
+    print(c)
 
 def bivec_decomp():
     b = utils.line_sym(e="be", v="bv")
@@ -87,6 +99,13 @@ def log_gunn():
     b = utils.line_sym(e="be", v="bv")
     print((u+v)*b*utils.inverse(s+p))
 
+def log_gunn_rotor():
+    u = utils.scalar_sym("u")
+    v = utils.pseudo_sym("v")
+    s = utils.scalar_sym("s2")
+    p = utils.pseudo_sym("p2.0")
+    b = utils.e_bivec_sym("be")
+    print((u+v)*b*utils.inverse(s+p))
 
 if __name__ == "__main__":
     main()

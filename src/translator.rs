@@ -20,6 +20,16 @@ impl Translator {
             v_bivector: [tv[0] * fac, tv[1] * fac, tv[2] * fac],
         }
     }
+    pub fn ssqrt(&self) -> Self {
+        self.add_scalar(1.0).normalize()
+    }
+
+    pub fn norm(&self) -> f32 {
+        self.scalar.abs()
+    }
+    pub fn normalize(&self) -> Self {
+        self.div_scalar(self.norm())
+    }
 
     pub fn apply_to_point(&self, p: &super::Point) -> super::Point {
         let v = self.v_bivector;
@@ -50,6 +60,22 @@ impl Translator {
                 e[0] * v[1] - e[1] * v[0] + rs * v[2],
             ],
         }
+    }
+
+    pub fn add_scalar(&self, s: f32) -> Self {
+        Self {
+            scalar: self.scalar + s,
+            ..*self
+        }
+    }
+    pub fn mul_scalar(&self, s: f32) -> Self {
+        Self {
+            scalar: self.scalar * s,
+            v_bivector: (s * na::Vec3::from(self.v_bivector)).into(),
+        }
+    }
+    pub fn div_scalar(&self, s: f32) -> Self {
+        self.mul_scalar(1. / s)
     }
 }
 

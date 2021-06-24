@@ -351,6 +351,7 @@ mod tests {
     }
 
     // #[test]
+    #[allow(dead_code)]
     fn move_to() {
         let l1 = Line::random().mul_scalar(6.5).normalize();
         let l2 = Line::random().mul_scalar(-10.7).normalize();
